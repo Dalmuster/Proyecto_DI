@@ -1,4 +1,11 @@
+import sqlite3
+from datetime import datetime
+
 import gi
+
+import Metodos
+from Conexion.conexionDB import ConexionBD
+from Metodos.metodosBotones import cargar_datos
 
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk
@@ -10,6 +17,7 @@ class FiestraPrincipal(Gtk.Window):
         super().__init__()
         self.set_title("Peluquería")
         self.set_border_width(10)
+
 
         caja_horizontal = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         self.add(caja_horizontal)
@@ -94,20 +102,92 @@ class FiestraPrincipal(Gtk.Window):
         caja_horizontal.pack_start(grid, True, True, 0)
 
     def on_btnAceptar_clicked(self, widget, ventana_a_ocultar):
+        # Crear conexión y cursor a la base de datos
+        conBD = ConexionBD("Peluqueria.sqlite")
+        conBD.conectaBD()
+        conBD.creaCursor()
+
         # Crear nueva ventana
         nueva_ventana = Gtk.Window(title="Base de datos")
-        nueva_ventana.set_default_size(400, 400)
+        nueva_ventana.set_default_size(700, 400)
 
-        cuadro_nueva = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
-        nueva_ventana.add(cuadro_nueva)
+        # Caja principal vertical
+        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+        nueva_ventana.add(vbox)
 
-        lblMensaje = Gtk.Label(label="¡Nueva ventana abierta!")
-        cuadro_nueva.pack_start(lblMensaje, True, True, 0)
+        # --- Encabezado personalizado encima del TreeView ---
+        header_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
 
+        # Imagen de encabezado (ruta válida)
+        imagen1 = Gtk.Image.new_from_file("/home/dam/PycharmProjects/Peluqueria/Imagenes/Logo.png")
+        header_box.pack_start(imagen1, False, False, 5)
+
+        # Añadimos el header personalizado al vbox
+        vbox.pack_start(header_box, False, False, 0)
+
+        # Crear modelo ListStore
+        liststore = Gtk.ListStore(int, str, str, int, str, int, int)
+
+        # Ejecutar consulta y llenar el liststore
+        conBD.cursor.execute(
+            "SELECT Id, Nombre, Apellidos, HoraCita, Servicios, Total_Gastado, id_Peluquera FROM Clientes")
+        for fila in conBD.cursor.fetchall():
+            liststore.append(fila)
+
+        # Crear TreeView con el modelo
+        treeview = Gtk.TreeView(model=liststore)
+
+        # Crear columnas de texto
+        titulos = ["ID", "Nombre", "Apellidos", "HoraCita", "Servicios", "Total_Gastado", "id_Peluquera"]
+        for i, columna_titulo in enumerate(titulos):
+            renderer = Gtk.CellRendererText()
+            column = Gtk.TreeViewColumn(columna_titulo, renderer, text=i)
+            treeview.append_column(column)
+
+        # Scroll para el treeview
+        scrolled_window = Gtk.ScrolledWindow()
+        scrolled_window.set_vexpand(True)
+        scrolled_window.add(treeview)
+
+        # Caja horizontal para el TreeView y el botón
+        hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+
+        # Añadir el scrolled window (con TreeView) a la izquierda
+        hbox.pack_start(scrolled_window, True, True, 0)
+
+        botones_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        # Crear botón a la derecha
+        botonAgregar = Gtk.Button(label="Agregar")
+        botonBorrar = Gtk.Button(label="Borrar")
+        botonEditar = Gtk.Button(label="Editar")
+        botones_box.pack_start(botonAgregar, False, False, 0)
+        botones_box.pack_start(botonBorrar, False, False, 0)
+        botones_box.pack_start(botonEditar, False, False, 0)
+
+        #botonAgregar.connect("clicked", on_btnAgregar_clicked,self)
+        cargar_datos(self)
+
+        search_entry = Gtk.SearchEntry()
+        botones_box.pack_start(search_entry, False, False, 10)
+
+        hbox.pack_start(botones_box, False, False, 10)
+
+
+        vbox.pack_start(hbox, True, True, 0)
+
+        lblInsertor = Gtk.Label("Introduzca el cambio")
+        insertor = Gtk.Entry()
+        vbox.pack_start(lblInsertor, True, True, 0)
+        vbox.pack_start(insertor, True, True, 0)
+
+
+        # Conectar señal para cerrar ventana
         nueva_ventana.connect("destroy", Gtk.main_quit)
+
+        # Mostrar ventana
         nueva_ventana.show_all()
 
-        # Ocultar la ventana original
+        # Ocultar ventana original
         ventana_a_ocultar.hide()
 
     def enlace_activado(self, widget, uri):
