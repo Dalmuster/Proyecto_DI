@@ -5,7 +5,8 @@ import gi
 
 import Metodos
 from Conexion.conexionDB import ConexionBD
-from Metodos.metodosBotones import cargar_datos
+from fpdf import FPDF
+import datetime
 
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk
@@ -109,7 +110,7 @@ class FiestraPrincipal(Gtk.Window):
 
         # Crear nueva ventana
         nueva_ventana = Gtk.Window(title="Base de datos")
-        nueva_ventana.set_default_size(700, 400)
+        nueva_ventana.set_default_size(900, 500)
 
         # Caja principal vertical
         vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
@@ -117,82 +118,340 @@ class FiestraPrincipal(Gtk.Window):
 
         # --- Encabezado personalizado encima del TreeView ---
         header_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-
-        # Imagen de encabezado (ruta válida)
         imagen1 = Gtk.Image.new_from_file("/home/dam/PycharmProjects/Peluqueria/Imagenes/Logo.png")
         header_box.pack_start(imagen1, False, False, 5)
-
-        # Añadimos el header personalizado al vbox
         vbox.pack_start(header_box, False, False, 0)
 
-        # Crear modelo ListStore
-        liststore = Gtk.ListStore(int, str, str, int, str, int, int)
-
-        # Ejecutar consulta y llenar el liststore
+        # Crear modelo ListStore y asignarlo a self
+        self.liststore = Gtk.ListStore(int, str, str, int, str, int, int)
         conBD.cursor.execute(
             "SELECT Id, Nombre, Apellidos, HoraCita, Servicios, Total_Gastado, id_Peluquera FROM Clientes")
         for fila in conBD.cursor.fetchall():
-            liststore.append(fila)
+            fila = list(fila)
+            try:
+                if isinstance(fila[3], str):
+                    fila[3] = int(fila[3]) if fila[3].isdigit() else 0
+            except Exception as e:
+                print(f"Error convirtiendo fila {fila}: {e}")
+                fila[3] = 0  # valor por defecto si falla la conversión
+
+            self.liststore.append(fila)  # Usar self.liststore
 
         # Crear TreeView con el modelo
-        treeview = Gtk.TreeView(model=liststore)
-
-        # Crear columnas de texto
+        treeview = Gtk.TreeView(model=self.liststore)
+        self.trvDetalleAlbara = treeview
         titulos = ["ID", "Nombre", "Apellidos", "HoraCita", "Servicios", "Total_Gastado", "id_Peluquera"]
         for i, columna_titulo in enumerate(titulos):
             renderer = Gtk.CellRendererText()
             column = Gtk.TreeViewColumn(columna_titulo, renderer, text=i)
             treeview.append_column(column)
 
-        # Scroll para el treeview
         scrolled_window = Gtk.ScrolledWindow()
         scrolled_window.set_vexpand(True)
         scrolled_window.add(treeview)
 
-        # Caja horizontal para el TreeView y el botón
+        # Caja horizontal para el contenido principal
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-
-        # Añadir el scrolled window (con TreeView) a la izquierda
         hbox.pack_start(scrolled_window, True, True, 0)
 
+        # --- Caja derecha: formulario + botones ---
+        derecha_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+
+        # Caja del formulario
+        formulario_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+        labels = ["Nombre", "Apellidos", "Hora Cita", "Servicios", "Total Gastado", "ID Peluquera"]
+        self.entries = []
+
+        for texto in labels:
+            label = Gtk.Label(label=texto, halign=Gtk.Align.START)
+            entry = Gtk.Entry()
+            fila = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=5)
+            fila.pack_start(label, False, False, 5)
+            fila.pack_start(entry, True, True, 5)
+            formulario_box.pack_start(fila, False, False, 0)
+            self.entries.append(entry)
+
+        # Caja de botones
         botones_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
-        # Crear botón a la derecha
         botonAgregar = Gtk.Button(label="Agregar")
         botonBorrar = Gtk.Button(label="Borrar")
         botonEditar = Gtk.Button(label="Editar")
+
         botones_box.pack_start(botonAgregar, False, False, 0)
         botones_box.pack_start(botonBorrar, False, False, 0)
         botones_box.pack_start(botonEditar, False, False, 0)
 
-        #botonAgregar.connect("clicked", on_btnAgregar_clicked,self)
-        cargar_datos(self)
+        botonAgregar.connect("clicked", self.on_btnAgregar_clicked)
+        botonBorrar.connect("clicked", self.on_btnBorrar_clicked)
+        botonEditar.connect("clicked", self.on_btnEditar_clicked)
 
-        search_entry = Gtk.SearchEntry()
-        botones_box.pack_start(search_entry, False, False, 10)
+        boton_factura = Gtk.Button(label="Crear Factura PDF")
+        boton_factura.connect("clicked", self.on_btnCrearFactura_clicked)
 
-        hbox.pack_start(botones_box, False, False, 10)
+        # Añádelo a la caja o layout que tengas en la ventana
+        # Por ejemplo, si tienes un box llamado 'botones_box':
+        botones_box.pack_start(boton_factura, False, False, 0)
 
+        # Añadir formulario y botones juntos
+        derecha_box.pack_start(formulario_box, True, True, 0)
+        derecha_box.pack_start(botones_box, False, False, 0)
 
+        # Añadir a hbox principal
+        hbox.pack_start(derecha_box, False, False, 10)
+
+        # Añadir hbox completo al vbox principal
         vbox.pack_start(hbox, True, True, 0)
 
-        lblInsertor = Gtk.Label("Introduzca el cambio")
-        insertor = Gtk.Entry()
-        vbox.pack_start(lblInsertor, True, True, 0)
-        vbox.pack_start(insertor, True, True, 0)
-
-
-        # Conectar señal para cerrar ventana
+        # Mostrar ventana y ocultar la anterior
         nueva_ventana.connect("destroy", Gtk.main_quit)
-
-        # Mostrar ventana
         nueva_ventana.show_all()
-
-        # Ocultar ventana original
         ventana_a_ocultar.hide()
+
+    def on_btnAgregar_clicked(self, widget):
+        nombre = self.entries[0].get_text()
+        apellidos = self.entries[1].get_text()
+        hora_cita_str = self.entries[2].get_text()
+        servicios = self.entries[3].get_text()
+        total_gastado_str = self.entries[4].get_text()
+        id_peluquera_str = self.entries[5].get_text()
+
+        # Validaciones y conversiones
+        try:
+            hora_cita = int(hora_cita_str)
+        except ValueError:
+            hora_cita = 0
+
+        try:
+            total_gastado = int(total_gastado_str)
+        except ValueError:
+            total_gastado = 0
+
+        try:
+            id_peluquera = int(id_peluquera_str)
+        except ValueError:
+            id_peluquera = 0
+
+        # Insertar en la base de datos
+        conBD = ConexionBD('Peluqueria.sqlite')
+        conBD.conectaBD()
+        conBD.creaCursor()
+
+        conBD.engadeRexistro("""
+            INSERT INTO Clientes (nombre, apellidos, HoraCita, servicios, total_gastado, id_peluquera)
+            VALUES (?, ?, ?, ?, ?, ?)""",
+                             nombre, apellidos, hora_cita, servicios, total_gastado, id_peluquera)
+
+        conBD.pechaBD()
+
+        # Insertar en el liststore de la interfaz
+        self.liststore.append([None, nombre, apellidos, hora_cita, servicios, total_gastado, id_peluquera])
+
+    def on_btnBorrar_clicked(self, boton):
+        seleccion = self.trvDetalleAlbara.get_selection()
+        model, treeiter = seleccion.get_selected()
+
+        if treeiter is not None:
+            codigoProducto = model[treeiter][0]
+            dialog = Gtk.MessageDialog(self, Gtk.DialogFlags.MODAL, Gtk.MessageType.QUESTION, Gtk.ButtonsType.YES_NO, "¿Seguro que quieres borrar este producto?")
+            response = dialog.run()
+
+            if response == Gtk.ResponseType.YES:
+                model.remove(treeiter)  # Eliminar de la vista
+                conBD = ConexionBD('Peluqueria.sqlite')
+                conBD.conectaBD()
+                conBD.creaCursor()
+                conBD.borraRexistro("DELETE FROM Clientes WHERE Id = ?",
+                                     codigoProducto)
+                conBD.pechaBD()
+            dialog.destroy()
+        else:
+            print("No se ha seleccionado ningún detalle para borrar.")
+
+    def on_btnEditar_clicked(self, widget):
+        # Obtener la fila seleccionada
+        seleccion = self.trvDetalleAlbara.get_selection()
+        model, treeiter = seleccion.get_selected()
+
+        if treeiter is not None:
+            id_cliente = model[treeiter][0]  # Asumiendo que ID está en columna 0
+
+            # Obtener valores actualizados desde las entradas
+            nombre = self.entries[0].get_text()
+            apellidos = self.entries[1].get_text()
+            try:
+                hora_cita = int(self.entries[2].get_text())
+            except ValueError:
+                hora_cita = 0
+            servicios = self.entries[3].get_text()
+            try:
+                total_gastado = int(self.entries[4].get_text())
+            except ValueError:
+                total_gastado = 0
+            try:
+                id_peluquera = int(self.entries[5].get_text())
+            except ValueError:
+                id_peluquera = 0
+
+            # Conectar a BD y actualizar registro
+            conBD = ConexionBD('Peluqueria.sqlite')
+            conBD.conectaBD()
+            conBD.creaCursor()
+
+            conBD.actualizaRexistro("""
+                UPDATE Clientes SET
+                    Nombre = ?,
+                    Apellidos = ?,
+                    HoraCita = ?,
+                    Servicios = ?,
+                    Total_Gastado = ?,
+                    id_Peluquera = ?
+                WHERE Id = ?
+            """, nombre, apellidos, hora_cita, servicios, total_gastado, id_peluquera, id_cliente)
+
+            conBD.pechaBD()
+
+            # Actualizar la fila en el ListStore
+            model[treeiter][1] = nombre
+            model[treeiter][2] = apellidos
+            model[treeiter][3] = hora_cita
+            model[treeiter][4] = servicios
+            model[treeiter][5] = total_gastado
+            model[treeiter][6] = id_peluquera
+        else:
+            print("No hay fila seleccionada para editar")
 
     def enlace_activado(self, widget, uri):
         print(f"Enlace activado: {uri}")
         webbrowser.open(uri)
+
+    def crear_factura_pdf(self, nombre_cliente, lista_items, total_factura, nombre_archivo="factura.pdf"):
+        from fpdf import FPDF
+        import datetime
+
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+
+        pdf.cell(200, 10, txt="Factura Peluquería", ln=True, align="C")
+        pdf.cell(200, 10, txt=f"Cliente: {nombre_cliente}", ln=True, align="L")
+        pdf.cell(200, 10, txt=f"Fecha: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ln=True, align="L")
+        pdf.ln(10)
+
+        # Cabecera de tabla
+        pdf.cell(80, 10, "Descripción", 1)
+        pdf.cell(30, 10, "Cantidad", 1)
+        pdf.cell(40, 10, "Precio Unitario", 1)
+        pdf.cell(40, 10, "Subtotal", 1)
+        pdf.ln()
+
+        # Cuerpo de tabla
+        for item in lista_items:
+            descripcion = item.get('descripcion', '')
+            cantidad = item.get('cantidad', 1)
+            precio_unitario = float(item.get('precio_unitario', 0))
+            subtotal = cantidad * precio_unitario
+
+            pdf.cell(80, 10, descripcion, 1)
+            pdf.cell(30, 10, str(cantidad), 1, align="C")
+            pdf.cell(40, 10, f"{precio_unitario:.2f}", 1, align="R")
+            pdf.cell(40, 10, f"{subtotal:.2f}", 1, align="R")
+            pdf.ln()
+
+        # Total
+        pdf.cell(150, 10, "Total", 1)
+        pdf.cell(40, 10, f"{total_factura:.2f}", 1, align="R")
+
+        pdf.output(nombre_archivo)
+        print(f"Factura PDF creada: {nombre_archivo}")
+
+    def on_btnCrearFactura_clicked(self, widget):
+
+        # Paso 1: Obtener cliente seleccionado del TreeView
+        selection = self.trvDetalleAlbara.get_selection()
+        model, treeiter = selection.get_selected()
+
+        if not treeiter:
+            print("Ningún cliente seleccionado.")
+            return
+
+        id_cliente = model[treeiter][0]  # Suponemos que la primera columna del TreeView es el ID
+
+        # Paso 2: Conectar con la base de datos
+        conBD = ConexionBD('Peluqueria.sqlite')
+        conBD.conectaBD()
+        conBD.creaCursor()
+
+        # Paso 3: Obtener datos del cliente
+        consulta = """SELECT Nombre, Apellidos, Servicios, Total_Gastado FROM Clientes WHERE Id = ?"""
+        resultado = conBD.consultaConParametros(consulta, id_cliente)
+
+        if not resultado:
+            print("No se encontraron datos para ese cliente.")
+            return
+
+        nombre, apellidos, servicios_str, total_gastado = resultado[0]
+        nombre_cliente = f"{nombre} {apellidos}"
+
+        # Paso 4: Construir lista_items para la factura (servicios puede estar separados por comas)
+        lista_items = []
+        servicios = [s.strip() for s in servicios_str.split(',') if s.strip()]
+
+        try:
+            total_gastado = float(total_gastado)
+        except ValueError:
+            total_gastado = 0.0
+
+        # Dividir el total gastado entre el número de servicios
+        if servicios:
+            precio_unitario = total_gastado / len(servicios)
+        else:
+            precio_unitario = 0.0
+
+        for servicio in servicios:
+            lista_items.append({
+                'descripcion': servicio,
+                'cantidad': 1,
+                'precio_unitario': precio_unitario
+            })
+
+        # Paso 5: Crear PDF
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+
+        pdf.cell(200, 10, txt="Factura Peluquería", ln=True, align="C")
+        pdf.cell(200, 10, txt=f"Cliente: {nombre_cliente}", ln=True, align="L")
+        pdf.cell(200, 10, txt=f"Fecha: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ln=True, align="L")
+        pdf.ln(10)
+
+        pdf.cell(80, 10, "Descripción", 1)
+        pdf.cell(30, 10, "Cantidad", 1)
+        pdf.cell(40, 10, "Precio Unitario", 1)
+        pdf.cell(40, 10, "Subtotal", 1)
+        pdf.ln()
+
+        total = 0
+        for item in lista_items:
+            descripcion = item['descripcion']
+            cantidad = item['cantidad']
+            precio = item['precio_unitario']
+            subtotal = cantidad * precio
+            total += subtotal
+
+            pdf.cell(80, 10, descripcion, 1)
+            pdf.cell(30, 10, str(cantidad), 1, align="C")
+            pdf.cell(40, 10, f"{precio:.2f}", 1, align="R")
+            pdf.cell(40, 10, f"{subtotal:.2f}", 1, align="R")
+            pdf.ln()
+
+        pdf.cell(150, 10, "Total", 1)
+        pdf.cell(40, 10, f"{total:.2f}", 1, align="R")
+
+        nombre_archivo = f"factura_cliente_{id_cliente}.pdf"
+        pdf.output(nombre_archivo)
+        print(f"Factura creada: {nombre_archivo}")
+
+        conBD.pechaBD()
 
     def registro(self, widget, uri):
         if uri == "abrir_ventana":
