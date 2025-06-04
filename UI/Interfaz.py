@@ -11,7 +11,8 @@ import datetime
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk
 import webbrowser
-
+from fpdf import FPDF
+import datetime
 
 class FiestraPrincipal(Gtk.Window):
     def __init__(self):
@@ -325,8 +326,7 @@ class FiestraPrincipal(Gtk.Window):
         webbrowser.open(uri)
 
     def crear_factura_pdf(self, nombre_cliente, lista_items, total_factura, nombre_archivo="factura.pdf"):
-        from fpdf import FPDF
-        import datetime
+
 
         pdf = FPDF()
         pdf.add_page()
@@ -365,6 +365,8 @@ class FiestraPrincipal(Gtk.Window):
         print(f"Factura PDF creada: {nombre_archivo}")
 
     def on_btnCrearFactura_clicked(self, widget):
+        import datetime
+        from fpdf import FPDF
 
         # Paso 1: Obtener cliente seleccionado del TreeView
         selection = self.trvDetalleAlbara.get_selection()
@@ -381,38 +383,41 @@ class FiestraPrincipal(Gtk.Window):
         conBD.conectaBD()
         conBD.creaCursor()
 
-        # Paso 3: Obtener datos del cliente
-        consulta = """SELECT Nombre, Apellidos, Servicios, Total_Gastado FROM Clientes WHERE Id = ?"""
-        resultado = conBD.consultaConParametros(consulta, id_cliente)
+        # Paso 3: Obtener nombre y apellidos del cliente
+        consulta_cliente = "SELECT Nombre, Apellidos FROM Clientes WHERE Id = ?"
+        resultado_cliente = conBD.consultaConParametros(consulta_cliente, id_cliente)
 
-        if not resultado:
-            print("No se encontraron datos para ese cliente.")
+        if not resultado_cliente:
+            print("No se encontró el cliente.")
+            conBD.pechaBD()
             return
 
-        nombre, apellidos, servicios_str, total_gastado = resultado[0]
+        nombre, apellidos = resultado_cliente[0]
         nombre_cliente = f"{nombre} {apellidos}"
 
-        # Paso 4: Construir lista_items para la factura (servicios puede estar separados por comas)
+        # Paso 4: Obtener detalles de las citas (hora, servicio, precio)
+        consulta_citas = """
+                         SELECT C.HoraCita, Servicios, Total_Gastado
+                         FROM Clientes C
+                         WHERE Id = ? \
+                         """
+        resultado_citas = conBD.consultaConParametros(consulta_citas, id_cliente)
+
+        if not resultado_citas:
+            print("No se encontraron citas para ese cliente.")
+            conBD.pechaBD()
+            return
+
         lista_items = []
-        servicios = [s.strip() for s in servicios_str.split(',') if s.strip()]
-
-        try:
-            total_gastado = float(total_gastado)
-        except ValueError:
-            total_gastado = 0.0
-
-        # Dividir el total gastado entre el número de servicios
-        if servicios:
-            precio_unitario = total_gastado / len(servicios)
-        else:
-            precio_unitario = 0.0
-
-        for servicio in servicios:
+        for fila in resultado_citas:
+            hora_cita, servicio, precio_total = fila
             lista_items.append({
+                'hora_cita': hora_cita,
                 'descripcion': servicio,
-                'cantidad': 1,
-                'precio_unitario': precio_unitario
+                'precio_total': float(precio_total) if precio_total else 0.0
             })
+
+        conBD.pechaBD()
 
         # Paso 5: Crear PDF
         pdf = FPDF()
@@ -424,34 +429,27 @@ class FiestraPrincipal(Gtk.Window):
         pdf.cell(200, 10, txt=f"Fecha: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ln=True, align="L")
         pdf.ln(10)
 
-        pdf.cell(80, 10, "Descripción", 1)
-        pdf.cell(30, 10, "Cantidad", 1)
-        pdf.cell(40, 10, "Precio Unitario", 1)
-        pdf.cell(40, 10, "Subtotal", 1)
+        pdf.cell(80, 10, "Hora de la Cita", 1)
+        pdf.cell(60, 10, "Servicio", 1)
+        pdf.cell(40, 10, "Precio Total", 1)
         pdf.ln()
 
         total = 0
         for item in lista_items:
-            descripcion = item['descripcion']
-            cantidad = item['cantidad']
-            precio = item['precio_unitario']
-            subtotal = cantidad * precio
-            total += subtotal
-
-            pdf.cell(80, 10, descripcion, 1)
-            pdf.cell(30, 10, str(cantidad), 1, align="C")
-            pdf.cell(40, 10, f"{precio:.2f}", 1, align="R")
-            pdf.cell(40, 10, f"{subtotal:.2f}", 1, align="R")
+            pdf.cell(80, 10, str(item['hora_cita']), 1)
+            pdf.cell(60, 10, item['descripcion'], 1)
+            pdf.cell(40, 10, f"{item['precio_total']:.2f}", 1, align="R")
             pdf.ln()
+            total += item['precio_total']
 
-        pdf.cell(150, 10, "Total", 1)
+        pdf.cell(140, 10, "Total", 1)
         pdf.cell(40, 10, f"{total:.2f}", 1, align="R")
 
         nombre_archivo = f"factura_cliente_{id_cliente}.pdf"
         pdf.output(nombre_archivo)
         print(f"Factura creada: {nombre_archivo}")
 
-        conBD.pechaBD()
+
 
     def registro(self, widget, uri):
         if uri == "abrir_ventana":
@@ -520,19 +518,24 @@ class FiestraPrincipal(Gtk.Window):
             caja_nombre.pack_start(txtTelefono, False, False, 0)
 
             btnAceptar = Gtk.Button(label="Aceptar")
-            btnAceptar.connect("clicked", self.on_btnAceptar_clicked, nueva_ventana)
+            btnAceptar.connect("clicked", self.on_registro_aceptar_clicked)
+
+            caja_nombre.pack_start(btnAceptar, False, False, 0)
 
             cuadro_nueva.pack_start(cuadro1, False, False, 10)
             cuadro_nueva.pack_start(caja_nombre, False, False, 10)
 
-
-            # Mostrar ventana y cerrar la principal
-            nueva_ventana.connect("destroy", Gtk.main_quit)
+            # Mostrar ventana y ocultar la principal
             nueva_ventana.show_all()
             self.hide()
 
             return True
         return False
+
+    def on_registro_aceptar_clicked(self, widget):
+        ventana = widget.get_toplevel()  # Obtiene la ventana padre a la que pertenece el widget
+        ventana.destroy()
+        self.show_all()
 
 
 if __name__ == "__main__":
