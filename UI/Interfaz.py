@@ -484,38 +484,30 @@ class FiestraPrincipal(Gtk.Window):
             caja_nombre.set_halign(Gtk.Align.CENTER)
             lblNombre = Gtk.Label(label="Nombre de usuario")
             lblNombre.set_halign(Gtk.Align.CENTER)
-            txtNombre = Gtk.Entry()
-            txtNombre.set_width_chars(20)
-            txtNombre.set_halign(Gtk.Align.CENTER)
+            self.txtNombre = Gtk.Entry()
+            self.txtNombre.set_width_chars(20)
+            self.txtNombre.set_halign(Gtk.Align.CENTER)
             caja_nombre.pack_start(lblNombre, False, False, 0)
-            caja_nombre.pack_start(txtNombre, False, False, 0)
+            caja_nombre.pack_start(self.txtNombre, False, False, 0)
 
             # Campo contraseña
             lblContraseña = Gtk.Label(label="Contraseña del usuario")
             lblContraseña.set_halign(Gtk.Align.CENTER)
-            txtContraseña = Gtk.Entry()
-            txtContraseña.set_visibility(False)
-            txtContraseña.set_width_chars(20)
-            txtContraseña.set_halign(Gtk.Align.CENTER)
+            self.txtContraseña = Gtk.Entry()
+            self.txtContraseña.set_visibility(False)
+            self.txtContraseña.set_width_chars(20)
+            self.txtContraseña.set_halign(Gtk.Align.CENTER)
             caja_nombre.pack_start(lblContraseña, False, False, 0)
-            caja_nombre.pack_start(txtContraseña, False, False, 0)
+            caja_nombre.pack_start(self.txtContraseña, False, False, 0)
 
 
             lblEmail = Gtk.Label(label="Email")
             lblEmail.set_halign(Gtk.Align.CENTER)
-            txtEmail = Gtk.Entry()
-            txtEmail.set_width_chars(20)
-            txtEmail.set_halign(Gtk.Align.CENTER)
+            self.txtEmail = Gtk.Entry()
+            self.txtEmail.set_width_chars(20)
+            self.txtEmail.set_halign(Gtk.Align.CENTER)
             caja_nombre.pack_start(lblEmail, False, False, 0)
-            caja_nombre.pack_start(txtEmail, False, False, 0)
-
-            lblTelefono = Gtk.Label(label="Telefono")
-            lblTelefono.set_halign(Gtk.Align.CENTER)
-            txtTelefono = Gtk.Entry()
-            txtTelefono.set_width_chars(20)
-            txtTelefono.set_halign(Gtk.Align.CENTER)
-            caja_nombre.pack_start(lblTelefono, False, False, 0)
-            caja_nombre.pack_start(txtTelefono, False, False, 0)
+            caja_nombre.pack_start(self.txtEmail, False, False, 0)
 
             btnAceptar = Gtk.Button(label="Aceptar")
             btnAceptar.connect("clicked", self.on_registro_aceptar_clicked)
@@ -533,7 +525,25 @@ class FiestraPrincipal(Gtk.Window):
         return False
 
     def on_registro_aceptar_clicked(self, widget):
-        ventana = widget.get_toplevel()  # Obtiene la ventana padre a la que pertenece el widget
+        nombre = self.txtNombre.get_text()
+        contraseña = self.txtContraseña.get_text()
+        email = self.txtEmail.get_text()
+
+        try:
+            conexion = sqlite3.connect("Peluqueria.sqlite")  # Ruta de tu base de datos
+            cursor = conexion.cursor()
+            cursor.execute("INSERT INTO Usuarios (nombre, contraseña, correo) VALUES (?, ?, ?)",
+                           (nombre, contraseña, email))
+            conexion.commit()
+            conexion.close()
+
+            print("Usuario registrado correctamente.")
+        except Exception as e:
+            print("Error al registrar usuario:", e)
+            return
+
+        # Cerrar ventana de registro y mostrar principal
+        ventana = widget.get_toplevel()
         ventana.destroy()
         self.show_all()
 
