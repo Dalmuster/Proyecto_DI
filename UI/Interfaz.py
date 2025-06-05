@@ -73,7 +73,8 @@ class FiestraPrincipal(Gtk.Window):
 
         caixaBtnAceptar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=2)
         self.btnAceptar = Gtk.Button(label="Aceptar")
-        self.btnAceptar.connect("clicked", self.on_btnAceptar_clicked, self)
+        self.btnAceptar.connect("clicked", self.on_login_clicked)
+
         caixaBtnAceptar.set_halign(Gtk.Align.CENTER)
         caixaBtnAceptar.pack_start(self.btnAceptar, False, False, 2)
 
@@ -102,6 +103,42 @@ class FiestraPrincipal(Gtk.Window):
 
         caja_horizontal.pack_start(cuadro1, True, True, 0)
         caja_horizontal.pack_start(grid, True, True, 0)
+
+    def on_login_clicked(self, widget):
+        nombre = self.txtNombre.get_text().strip()
+        contraseña = self.txtContraseña.get_text().strip()
+
+        if not nombre or not contraseña:
+            self.mostrar_dialogo_error_Login("Por favor, complete todos los campos.")
+            return
+
+        try:
+            conexion = sqlite3.connect("Peluqueria.sqlite")
+            cursor = conexion.cursor()
+            cursor.execute("SELECT * FROM Usuarios WHERE nombre = ? AND contraseña = ?", (nombre, contraseña))
+            resultado = cursor.fetchone()
+            conexion.close()
+
+            if resultado:
+                print("Inicio de sesión exitoso.")
+                self.on_btnAceptar_clicked(widget, self)  # Llama a tu función personalizada
+            else:
+                self.mostrar_dialogo_error_Login("Usuario o contraseña incorrectos.")
+
+        except Exception as e:
+            self.mostrar_dialogo_error_Login(f"Error en la base de datos: {e}")
+
+    def mostrar_dialogo_error_Login(self, mensaje):
+        dialogo = Gtk.MessageDialog(
+            transient_for=self,
+            flags=0,
+            message_type=Gtk.MessageType.ERROR,
+            buttons=Gtk.ButtonsType.OK,
+            text="Error",
+        )
+        dialogo.format_secondary_text(mensaje)
+        dialogo.run()
+        dialogo.destroy()
 
     def on_btnAceptar_clicked(self, widget, ventana_a_ocultar):
         # Crear conexión y cursor a la base de datos
@@ -524,28 +561,49 @@ class FiestraPrincipal(Gtk.Window):
             return True
         return False
 
+    def mostrar_dialogo_error(self, ventana, mensaje):
+            dialogo = Gtk.MessageDialog(
+                transient_for=ventana,
+                flags=0,
+                message_type=Gtk.MessageType.ERROR,
+                buttons=Gtk.ButtonsType.CLOSE,
+                text=mensaje
+            )
+            dialogo.run()
+            dialogo.destroy()
+
     def on_registro_aceptar_clicked(self, widget):
-        nombre = self.txtNombre.get_text()
-        contraseña = self.txtContraseña.get_text()
-        email = self.txtEmail.get_text()
+            nombre = self.txtNombre.get_text().strip()
+            contraseña = self.txtContraseña.get_text().strip()
+            email = self.txtEmail.get_text().strip()
 
-        try:
-            conexion = sqlite3.connect("Peluqueria.sqlite")  # Ruta de tu base de datos
-            cursor = conexion.cursor()
-            cursor.execute("INSERT INTO Usuarios (nombre, contraseña, correo) VALUES (?, ?, ?)",
-                           (nombre, contraseña, email))
-            conexion.commit()
-            conexion.close()
+            ventana = widget.get_toplevel()
 
-            print("Usuario registrado correctamente.")
-        except Exception as e:
-            print("Error al registrar usuario:", e)
-            return
+            if not nombre or not contraseña or not email:
+                self.mostrar_dialogo_error(ventana, "Todos los campos son obligatorios.")
+                return
 
-        # Cerrar ventana de registro y mostrar principal
-        ventana = widget.get_toplevel()
-        ventana.destroy()
-        self.show_all()
+            try:
+                conexion = sqlite3.connect("Peluqueria.sqlite")
+                cursor = conexion.cursor()
+
+                cursor.execute("SELECT * FROM Usuarios WHERE nombre = ?", (nombre,))
+                if cursor.fetchone():
+                    self.mostrar_dialogo_error(ventana, f"El nombre de usuario '{nombre}' ya está en uso.")
+                    conexion.close()
+                    return
+
+                cursor.execute("INSERT INTO Usuarios (nombre, contraseña, correo) VALUES (?, ?, ?)",
+                               (nombre, contraseña, email))
+                conexion.commit()
+                conexion.close()
+
+                print("Usuario registrado correctamente.")
+                ventana.destroy()
+                self.show_all()
+
+            except Exception as e:
+                self.mostrar_dialogo_error(ventana, f"Error al registrar usuario: {e}")
 
 
 if __name__ == "__main__":
