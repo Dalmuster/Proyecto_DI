@@ -29,7 +29,7 @@ class FiestraPrincipal(Gtk.Window):
         color1 = Gdk.RGBA()
         color1.parse('#FFFFFF')
         cuadro1.override_background_color(Gtk.StateFlags.NORMAL, color1)
-        imagen1 = Gtk.Image.new_from_file("/home/dam/PycharmProjects/Peluqueria/Imagenes/Logo.png")
+        imagen1 = Gtk.Image.new_from_file("/home/daniel/PycharmProjects/Proyecto_DI/Imagenes/Logo.png")
 
         texto = "<a href='http://www.ejemplo.com'>Nuestra página</a>"
         lblEnlace = Gtk.Label(label=texto)
@@ -83,10 +83,16 @@ class FiestraPrincipal(Gtk.Window):
         lblEnlace2.set_use_markup(True)
         lblEnlace2.connect("activate-link", self.registro)
 
-        cuadro2.pack_start(caja_nombre, False, False, 10)
-        cuadro2.pack_start(caja_contraseña, False, False, 10)
-        cuadro2.pack_start(caixaBtnAceptar, False, False, 10)
-        cuadro2.pack_start(lblEnlace2, False, False, 10)
+        contenedor_centrado = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=15)
+        contenedor_centrado.set_halign(Gtk.Align.CENTER)
+        contenedor_centrado.set_valign(Gtk.Align.CENTER)
+
+        contenedor_centrado.pack_start(caja_nombre, False, False, 0)
+        contenedor_centrado.pack_start(caja_contraseña, False, False, 0)
+        contenedor_centrado.pack_start(caixaBtnAceptar, False, False, 0)
+        contenedor_centrado.pack_start(lblEnlace2, False, False, 0)
+
+        cuadro2.pack_start(contenedor_centrado, True, True, 0)
 
         grid = Gtk.Grid()
         grid.add(cuadro2)
@@ -156,7 +162,7 @@ class FiestraPrincipal(Gtk.Window):
 
         # --- Encabezado personalizado encima del TreeView ---
         header_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-        imagen1 = Gtk.Image.new_from_file("/home/dam/PycharmProjects/Peluqueria/Imagenes/Logo.png")
+        imagen1 = Gtk.Image.new_from_file("/home/daniel/PycharmProjects/Proyecto_DI/Imagenes/Logo.png")
         header_box.pack_start(imagen1, False, False, 5)
         vbox.pack_start(header_box, False, False, 0)
 
@@ -506,7 +512,7 @@ class FiestraPrincipal(Gtk.Window):
             color1 = Gdk.RGBA()
             color1.parse('#FFFFFF')
             cuadro1.override_background_color(Gtk.StateFlags.NORMAL, color1)
-            imagen1 = Gtk.Image.new_from_file("/home/dam/PycharmProjects/Peluqueria/Imagenes/Logo.png")
+            imagen1 = Gtk.Image.new_from_file("/home/daniel/PycharmProjects/Proyecto_DI/Imagenes/Logo.png")
 
             texto = "<a href='http://www.ejemplo.com'>Nuestra página</a>"
             lblEnlace = Gtk.Label(label=texto)
