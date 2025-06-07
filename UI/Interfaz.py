@@ -20,6 +20,7 @@ class FiestraPrincipal(Gtk.Window):
         self.set_title("Peluquería")
         self.set_border_width(10)
 
+        self.ventana_login = self
 
         caja_horizontal = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         self.add(caja_horizontal)
@@ -162,7 +163,7 @@ class FiestraPrincipal(Gtk.Window):
 
         # --- Encabezado personalizado encima del TreeView ---
         header_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-        imagen1 = Gtk.Image.new_from_file("/home/daniel/PycharmProjects/Proyecto_DI/Imagenes/Logo.png")
+        imagen1 = Gtk.Image.new_from_file("/home/daniel/PycharmProjects/Proyecto_DI/Imagenes/logoBase.png")
         header_box.pack_start(imagen1, False, False, 5)
         vbox.pack_start(header_box, False, False, 0)
 
@@ -492,78 +493,127 @@ class FiestraPrincipal(Gtk.Window):
         pdf.output(nombre_archivo)
         print(f"Factura creada: {nombre_archivo}")
 
-
-
     def registro(self, widget, uri):
         if uri == "abrir_ventana":
             nueva_ventana = Gtk.Window(title="Registro")
-            nueva_ventana.set_default_size(400, 400)
+            nueva_ventana.set_default_size(800, 450)
 
+            # Contenedor horizontal principal
+            contenedor_principal = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
+            nueva_ventana.add(contenedor_principal)
 
+            # Cuadro izquierdo (imagen y enlace)
+            cuadro_izquierdo = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+            cuadro_izquierdo.set_size_request(300, 450)
 
-            cuadro_nueva = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=20)
-            color = Gdk.RGBA()
-            color.parse('#4682B4')
-            cuadro_nueva.override_background_color(Gtk.StateFlags.NORMAL, color)
-            nueva_ventana.add(cuadro_nueva)
+            color_izq = Gdk.RGBA()
+            color_izq.parse('#FFFFFF')
+            cuadro_izquierdo.override_background_color(Gtk.StateFlags.NORMAL, color_izq)
 
-            cuadro1 = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-            cuadro1.set_size_request(300, 300)
-            color1 = Gdk.RGBA()
-            color1.parse('#FFFFFF')
-            cuadro1.override_background_color(Gtk.StateFlags.NORMAL, color1)
-            imagen1 = Gtk.Image.new_from_file("/home/daniel/PycharmProjects/Proyecto_DI/Imagenes/Logo.png")
+            imagen = Gtk.Image.new_from_file("/home/daniel/PycharmProjects/Proyecto_DI/Imagenes/Logo.png")
 
             texto = "<a href='http://www.ejemplo.com'>Nuestra página</a>"
-            lblEnlace = Gtk.Label(label=texto)
-            lblEnlace.set_use_markup(True)
-            lblEnlace.connect("activate-link", self.enlace_activado)
+            lbl_enlace = Gtk.Label(label=texto)
+            lbl_enlace.set_use_markup(True)
+            lbl_enlace.connect("activate-link", self.enlace_activado)
 
-            cuadro1.pack_start(imagen1, True, True, 0)
-            cuadro1.pack_start(lblEnlace, False, False, 0)
+            cuadro_izquierdo.pack_start(imagen, True, True, 20)
+            cuadro_izquierdo.pack_start(lbl_enlace, False, False, 10)
 
-            # Campo nombre
-            caja_nombre = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
-            caja_nombre.set_halign(Gtk.Align.CENTER)
-            lblNombre = Gtk.Label(label="Nombre de usuario")
-            lblNombre.set_halign(Gtk.Align.CENTER)
+            # Cuadro derecho (formulario)
+            cuadro_derecho = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=15)
+            cuadro_derecho.set_valign(Gtk.Align.CENTER)
+            cuadro_derecho.set_halign(Gtk.Align.CENTER)
+            cuadro_derecho.set_size_request(500, 450)
+
+            color_der = Gdk.RGBA()
+            color_der.parse('#4682B4')
+            cuadro_derecho.override_background_color(Gtk.StateFlags.NORMAL, color_der)
+
+            # Campo Nombre
+            lbl_nombre = Gtk.Label(label="Nombre de usuario")
+            lbl_nombre.set_halign(Gtk.Align.CENTER)
             self.txtNombre = Gtk.Entry()
-            self.txtNombre.set_width_chars(20)
+            self.txtNombre.set_width_chars(25)
             self.txtNombre.set_halign(Gtk.Align.CENTER)
-            caja_nombre.pack_start(lblNombre, False, False, 0)
-            caja_nombre.pack_start(self.txtNombre, False, False, 0)
 
-            # Campo contraseña
-            lblContraseña = Gtk.Label(label="Contraseña del usuario")
-            lblContraseña.set_halign(Gtk.Align.CENTER)
+            # Campo Contraseña
+            lbl_contraseña = Gtk.Label(label="Contraseña del usuario")
+            lbl_contraseña.set_halign(Gtk.Align.CENTER)
             self.txtContraseña = Gtk.Entry()
             self.txtContraseña.set_visibility(False)
-            self.txtContraseña.set_width_chars(20)
+            self.txtContraseña.set_width_chars(25)
             self.txtContraseña.set_halign(Gtk.Align.CENTER)
-            caja_nombre.pack_start(lblContraseña, False, False, 0)
-            caja_nombre.pack_start(self.txtContraseña, False, False, 0)
 
-
-            lblEmail = Gtk.Label(label="Email")
-            lblEmail.set_halign(Gtk.Align.CENTER)
+            # Campo Email
+            lbl_email = Gtk.Label(label="Email")
+            lbl_email.set_halign(Gtk.Align.CENTER)
             self.txtEmail = Gtk.Entry()
-            self.txtEmail.set_width_chars(20)
+            self.txtEmail.set_width_chars(25)
             self.txtEmail.set_halign(Gtk.Align.CENTER)
-            caja_nombre.pack_start(lblEmail, False, False, 0)
-            caja_nombre.pack_start(self.txtEmail, False, False, 0)
 
-            btnAceptar = Gtk.Button(label="Aceptar")
-            btnAceptar.connect("clicked", self.on_registro_aceptar_clicked)
+            # Botón Aceptar
+            btn_aceptar = Gtk.Button(label="Aceptar")
+            btn_aceptar.connect("clicked", self.on_registro_aceptar_clicked)
 
-            caja_nombre.pack_start(btnAceptar, False, False, 0)
+            # Enlace para volver
+            texto_volver = "<a href='volver_login'>Volver al login</a>"
+            lbl_volver = Gtk.Label(label=texto_volver)
+            lbl_volver.set_use_markup(True)
+            lbl_volver.connect("activate-link", self.volver_al_login)
 
-            cuadro_nueva.pack_start(cuadro1, False, False, 10)
-            cuadro_nueva.pack_start(caja_nombre, False, False, 10)
+            # Crear un grid para los campos
+            grid_formulario = Gtk.Grid()
+            grid_formulario.set_row_spacing(10)
+            grid_formulario.set_column_spacing(10)
+            grid_formulario.set_column_homogeneous(False)
+            grid_formulario.set_valign(Gtk.Align.CENTER)
+            grid_formulario.set_halign(Gtk.Align.CENTER)
 
-            # Mostrar ventana y ocultar la principal
+            # Crear un contenedor vertical para todo el formulario
+            formulario = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+            formulario.set_valign(Gtk.Align.CENTER)
+            formulario.set_halign(Gtk.Align.CENTER)
+
+            # Campo: Nombre de usuario
+            box_nombre = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+            box_nombre.pack_start(lbl_nombre, False, False, 0)
+            box_nombre.pack_start(self.txtNombre, False, False, 0)
+
+            # Campo: Contraseña
+            box_contraseña = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+            box_contraseña.pack_start(lbl_contraseña, False, False, 0)
+            box_contraseña.pack_start(self.txtContraseña, False, False, 0)
+
+            # Campo: Email
+            box_email = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+            box_email.pack_start(lbl_email, False, False, 0)
+            box_email.pack_start(self.txtEmail, False, False, 0)
+
+            # Añadir todo al formulario
+            formulario.pack_start(box_nombre, False, False, 0)
+            formulario.pack_start(box_contraseña, False, False, 0)
+            formulario.pack_start(box_email, False, False, 0)
+            formulario.pack_start(btn_aceptar, False, False, 10)
+            formulario.pack_start(lbl_volver, False, False, 5)
+
+            # Agregar al cuadro derecho
+            cuadro_derecho.pack_start(formulario, True, True, 10)
+
+            # Empaquetar en el contenedor principal
+            contenedor_principal.pack_start(cuadro_izquierdo, False, False, 0)
+            contenedor_principal.pack_start(cuadro_derecho, True, True, 0)
+
             nueva_ventana.show_all()
             self.hide()
 
+            return True
+        return False
+
+    def volver_al_login(self, widget, uri):
+        if uri == "volver_login":
+            widget.get_toplevel().destroy()  # Cierra la ventana de registro
+            self.ventana_login.show_all()  # Muestra la ventana de login de nuevo
             return True
         return False
 
