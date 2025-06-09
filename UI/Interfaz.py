@@ -19,6 +19,7 @@ class FiestraPrincipal(Gtk.Window):
         super().__init__()
         self.set_title("Peluquería")
         self.set_border_width(10)
+        self.set_resizable(False)
 
         self.ventana_login = self
 
@@ -148,41 +149,40 @@ class FiestraPrincipal(Gtk.Window):
         dialogo.destroy()
 
     def on_btnAceptar_clicked(self, widget, ventana_a_ocultar):
-        # Crear conexión y cursor a la base de datos
         conBD = ConexionBD("Peluqueria.sqlite")
         conBD.conectaBD()
         conBD.creaCursor()
 
         # Crear nueva ventana
         nueva_ventana = Gtk.Window(title="Base de datos")
-        nueva_ventana.set_default_size(900, 500)
+        nueva_ventana.set_default_size(1050, 400)
+        nueva_ventana.set_resizable(False)
+
+        color_azul = Gdk.RGBA()
+        color_azul.parse('#4682B4')
+        nueva_ventana.override_background_color(Gtk.StateFlags.NORMAL, color_azul)
 
         # Caja principal vertical
         vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+        vbox.override_background_color(Gtk.StateFlags.NORMAL, color_azul)
         nueva_ventana.add(vbox)
 
-        # --- Encabezado personalizado encima del TreeView ---
+        # Encabezado
         header_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        header_box.override_background_color(Gtk.StateFlags.NORMAL, color_azul)
         imagen1 = Gtk.Image.new_from_file("/home/daniel/PycharmProjects/Proyecto_DI/Imagenes/logoBase.png")
-        header_box.pack_start(imagen1, False, False, 5)
+        imagen1.set_halign(Gtk.Align.CENTER)
+        header_box.pack_start(imagen1, True, True, 0)
         vbox.pack_start(header_box, False, False, 0)
 
-        # Crear modelo ListStore y asignarlo a self
         self.liststore = Gtk.ListStore(int, str, str, int, str, int, int)
-        conBD.cursor.execute(
-            "SELECT Id, Nombre, Apellidos, HoraCita, Servicios, Total_Gastado, id_Peluquera FROM Clientes")
-        for fila in conBD.cursor.fetchall():
-            fila = list(fila)
-            try:
-                if isinstance(fila[3], str):
-                    fila[3] = int(fila[3]) if fila[3].isdigit() else 0
-            except Exception as e:
-                print(f"Error convirtiendo fila {fila}: {e}")
-                fila[3] = 0  # valor por defecto si falla la conversión
 
-            self.liststore.append(fila)  # Usar self.liststore
+        # Entry de búsqueda
+        self.entry_busqueda = Gtk.Entry()
+        self.entry_busqueda.set_placeholder_text("Buscar por nombre, apellidos o servicios")
+        self.entry_busqueda.connect("changed", self.on_busqueda_cambiada)
 
-        # Crear TreeView con el modelo
+        # Crear TreeView
         treeview = Gtk.TreeView(model=self.liststore)
         self.trvDetalleAlbara = treeview
         titulos = ["ID", "Nombre", "Apellidos", "HoraCita", "Servicios", "Total_Gastado", "id_Peluquera"]
@@ -195,62 +195,124 @@ class FiestraPrincipal(Gtk.Window):
         scrolled_window.set_vexpand(True)
         scrolled_window.add(treeview)
 
-        # Caja horizontal para el contenido principal
-        hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-        hbox.pack_start(scrolled_window, True, True, 0)
+        # Caja izquierda vertical
+        caja_izquierda = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        caja_izquierda.override_background_color(Gtk.StateFlags.NORMAL, color_azul)
+        caja_izquierda.pack_start(self.entry_busqueda, False, False, 5)
+        caja_izquierda.pack_start(scrolled_window, True, True, 0)
 
-        # --- Caja derecha: formulario + botones ---
+        # Caja derecha
         derecha_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        derecha_box.override_background_color(Gtk.StateFlags.NORMAL, color_azul)
 
-        # Caja del formulario
         formulario_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+        formulario_box.override_background_color(Gtk.StateFlags.NORMAL, color_azul)
+        derecha_box.set_valign(Gtk.Align.CENTER)  # <-- Aquí está la clave
+
+        derecha_box.pack_start(formulario_box, True, True, 0)
+
         labels = ["Nombre", "Apellidos", "Hora Cita", "Servicios", "Total Gastado", "ID Peluquera"]
         self.entries = []
 
         for texto in labels:
-            label = Gtk.Label(label=texto, halign=Gtk.Align.START)
-            entry = Gtk.Entry()
             fila = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=5)
+            fila.override_background_color(Gtk.StateFlags.NORMAL, color_azul)
+
+            label = Gtk.Label(label=texto)
+            label.set_halign(Gtk.Align.START)
+            label.set_valign(Gtk.Align.CENTER)
+            label.set_size_request(120, -1)
+            label.override_background_color(Gtk.StateFlags.NORMAL, color_azul)
+
+            entry = Gtk.Entry()
+            entry.set_size_request(-1, 30)
+            entry.set_valign(Gtk.Align.CENTER)
+
             fila.pack_start(label, False, False, 5)
             fila.pack_start(entry, True, True, 5)
+
             formulario_box.pack_start(fila, False, False, 0)
             self.entries.append(entry)
 
-        # Caja de botones
         botones_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        botones_box.override_background_color(Gtk.StateFlags.NORMAL, color_azul)
+
         botonAgregar = Gtk.Button(label="Agregar")
         botonBorrar = Gtk.Button(label="Borrar")
         botonEditar = Gtk.Button(label="Editar")
+        botonRecargar = Gtk.Button(label="Recargar")
 
         botones_box.pack_start(botonAgregar, False, False, 0)
         botones_box.pack_start(botonBorrar, False, False, 0)
         botones_box.pack_start(botonEditar, False, False, 0)
+        botones_box.pack_start(botonRecargar, False, False, 0)
 
         botonAgregar.connect("clicked", self.on_btnAgregar_clicked)
         botonBorrar.connect("clicked", self.on_btnBorrar_clicked)
         botonEditar.connect("clicked", self.on_btnEditar_clicked)
+        botonRecargar.connect("clicked", self.on_btnAceptar_clicked, nueva_ventana)
 
         boton_factura = Gtk.Button(label="Crear Factura PDF")
         boton_factura.connect("clicked", self.on_btnCrearFactura_clicked)
-
-        # Añádelo a la caja o layout que tengas en la ventana
-        # Por ejemplo, si tienes un box llamado 'botones_box':
         botones_box.pack_start(boton_factura, False, False, 0)
 
-        # Añadir formulario y botones juntos
         derecha_box.pack_start(formulario_box, True, True, 0)
         derecha_box.pack_start(botones_box, False, False, 0)
 
-        # Añadir a hbox principal
+        hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        hbox.override_background_color(Gtk.StateFlags.NORMAL, color_azul)
+        hbox.pack_start(caja_izquierda, True, True, 0)
         hbox.pack_start(derecha_box, False, False, 10)
 
-        # Añadir hbox completo al vbox principal
         vbox.pack_start(hbox, True, True, 0)
 
-        # Mostrar ventana y ocultar la anterior
+        # Cargar datos iniciales
+        self.cargar_datos_en_liststore()
+
         nueva_ventana.connect("destroy", Gtk.main_quit)
         nueva_ventana.show_all()
         ventana_a_ocultar.hide()
+
+    def cargar_datos_en_liststore(self):
+        self.liststore.clear()
+        conBD = ConexionBD("Peluqueria.sqlite")
+        conBD.conectaBD()
+        conBD.creaCursor()
+        conBD.cursor.execute(
+            "SELECT Id, Nombre, Apellidos, HoraCita, Servicios, Total_Gastado, id_Peluquera FROM Clientes")
+
+        for fila in conBD.cursor.fetchall():
+            fila = list(fila)
+            try:
+                if isinstance(fila[3], str):
+                    fila[3] = int(fila[3]) if fila[3].isdigit() else 0
+            except:
+                fila[3] = 0
+            self.liststore.append(fila)
+
+    def on_busqueda_cambiada(self, entry):
+        texto = entry.get_text().lower()
+        self.liststore.clear()
+
+        conBD = ConexionBD("Peluqueria.sqlite")
+        conBD.conectaBD()
+        conBD.creaCursor()
+        conBD.cursor.execute(
+            "SELECT Id, Nombre, Apellidos, HoraCita, Servicios, Total_Gastado, id_Peluquera FROM Clientes")
+
+        for fila in conBD.cursor.fetchall():
+            fila = list(fila)
+            nombre = str(fila[1]).lower()
+            apellidos = str(fila[2]).lower()
+            servicios = str(fila[4]).lower()
+
+            if texto in nombre or texto in apellidos or texto in servicios or texto == "":
+                try:
+                    if isinstance(fila[3], str):
+                        fila[3] = int(fila[3]) if fila[3].isdigit() else 0
+                except:
+                    fila[3] = 0
+                self.liststore.append(fila)
 
     def on_btnAgregar_clicked(self, widget):
         nombre = self.entries[0].get_text()
@@ -260,7 +322,6 @@ class FiestraPrincipal(Gtk.Window):
         total_gastado_str = self.entries[4].get_text()
         id_peluquera_str = self.entries[5].get_text()
 
-        # Validaciones y conversiones
         try:
             hora_cita = int(hora_cita_str)
         except ValueError:
@@ -288,7 +349,6 @@ class FiestraPrincipal(Gtk.Window):
 
         conBD.pechaBD()
 
-        # Insertar en el liststore de la interfaz
         self.liststore.append([None, nombre, apellidos, hora_cita, servicios, total_gastado, id_peluquera])
 
     def on_btnBorrar_clicked(self, boton):
@@ -318,9 +378,8 @@ class FiestraPrincipal(Gtk.Window):
         model, treeiter = seleccion.get_selected()
 
         if treeiter is not None:
-            id_cliente = model[treeiter][0]  # Asumiendo que ID está en columna 0
+            id_cliente = model[treeiter][0]
 
-            # Obtener valores actualizados desde las entradas
             nombre = self.entries[0].get_text()
             apellidos = self.entries[1].get_text()
             try:
@@ -337,7 +396,6 @@ class FiestraPrincipal(Gtk.Window):
             except ValueError:
                 id_peluquera = 0
 
-            # Conectar a BD y actualizar registro
             conBD = ConexionBD('Peluqueria.sqlite')
             conBD.conectaBD()
             conBD.creaCursor()
@@ -355,7 +413,7 @@ class FiestraPrincipal(Gtk.Window):
 
             conBD.pechaBD()
 
-            # Actualizar la fila en el ListStore
+            # Actualizar la fila
             model[treeiter][1] = nombre
             model[treeiter][2] = apellidos
             model[treeiter][3] = hora_cita
@@ -412,7 +470,7 @@ class FiestraPrincipal(Gtk.Window):
         import datetime
         from fpdf import FPDF
 
-        # Paso 1: Obtener cliente seleccionado del TreeView
+        #Obtener cliente
         selection = self.trvDetalleAlbara.get_selection()
         model, treeiter = selection.get_selected()
 
@@ -422,12 +480,11 @@ class FiestraPrincipal(Gtk.Window):
 
         id_cliente = model[treeiter][0]  # Suponemos que la primera columna del TreeView es el ID
 
-        # Paso 2: Conectar con la base de datos
         conBD = ConexionBD('Peluqueria.sqlite')
         conBD.conectaBD()
         conBD.creaCursor()
 
-        # Paso 3: Obtener nombre y apellidos del cliente
+        #Obtener nombre y apellidos del cliente
         consulta_cliente = "SELECT Nombre, Apellidos FROM Clientes WHERE Id = ?"
         resultado_cliente = conBD.consultaConParametros(consulta_cliente, id_cliente)
 
@@ -439,7 +496,7 @@ class FiestraPrincipal(Gtk.Window):
         nombre, apellidos = resultado_cliente[0]
         nombre_cliente = f"{nombre} {apellidos}"
 
-        # Paso 4: Obtener detalles de las citas (hora, servicio, precio)
+        #Obtener detalles de las citas (hora, servicio, precio)
         consulta_citas = """
                          SELECT C.HoraCita, Servicios, Total_Gastado
                          FROM Clientes C
@@ -463,7 +520,7 @@ class FiestraPrincipal(Gtk.Window):
 
         conBD.pechaBD()
 
-        # Paso 5: Crear PDF
+        #Crear PDF
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("Arial", size=12)
@@ -497,12 +554,13 @@ class FiestraPrincipal(Gtk.Window):
         if uri == "abrir_ventana":
             nueva_ventana = Gtk.Window(title="Registro")
             nueva_ventana.set_default_size(800, 450)
+            nueva_ventana.set_resizable(False)
 
             # Contenedor horizontal principal
             contenedor_principal = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
             nueva_ventana.add(contenedor_principal)
 
-            # Cuadro izquierdo (imagen y enlace)
+            # Cuadro izquierdo
             cuadro_izquierdo = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
             cuadro_izquierdo.set_size_request(300, 450)
 
@@ -520,7 +578,7 @@ class FiestraPrincipal(Gtk.Window):
             cuadro_izquierdo.pack_start(imagen, True, True, 20)
             cuadro_izquierdo.pack_start(lbl_enlace, False, False, 10)
 
-            # Cuadro derecho (formulario)
+            # Cuadro derecho
             cuadro_derecho = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=15)
             cuadro_derecho.set_valign(Gtk.Align.CENTER)
             cuadro_derecho.set_halign(Gtk.Align.CENTER)
@@ -530,14 +588,12 @@ class FiestraPrincipal(Gtk.Window):
             color_der.parse('#4682B4')
             cuadro_derecho.override_background_color(Gtk.StateFlags.NORMAL, color_der)
 
-            # Campo Nombre
             lbl_nombre = Gtk.Label(label="Nombre de usuario")
             lbl_nombre.set_halign(Gtk.Align.CENTER)
             self.txtNombre = Gtk.Entry()
             self.txtNombre.set_width_chars(25)
             self.txtNombre.set_halign(Gtk.Align.CENTER)
 
-            # Campo Contraseña
             lbl_contraseña = Gtk.Label(label="Contraseña del usuario")
             lbl_contraseña.set_halign(Gtk.Align.CENTER)
             self.txtContraseña = Gtk.Entry()
@@ -545,24 +601,20 @@ class FiestraPrincipal(Gtk.Window):
             self.txtContraseña.set_width_chars(25)
             self.txtContraseña.set_halign(Gtk.Align.CENTER)
 
-            # Campo Email
             lbl_email = Gtk.Label(label="Email")
             lbl_email.set_halign(Gtk.Align.CENTER)
             self.txtEmail = Gtk.Entry()
             self.txtEmail.set_width_chars(25)
             self.txtEmail.set_halign(Gtk.Align.CENTER)
 
-            # Botón Aceptar
             btn_aceptar = Gtk.Button(label="Aceptar")
             btn_aceptar.connect("clicked", self.on_registro_aceptar_clicked)
 
-            # Enlace para volver
             texto_volver = "<a href='volver_login'>Volver al login</a>"
             lbl_volver = Gtk.Label(label=texto_volver)
             lbl_volver.set_use_markup(True)
             lbl_volver.connect("activate-link", self.volver_al_login)
 
-            # Crear un grid para los campos
             grid_formulario = Gtk.Grid()
             grid_formulario.set_row_spacing(10)
             grid_formulario.set_column_spacing(10)
@@ -570,37 +622,30 @@ class FiestraPrincipal(Gtk.Window):
             grid_formulario.set_valign(Gtk.Align.CENTER)
             grid_formulario.set_halign(Gtk.Align.CENTER)
 
-            # Crear un contenedor vertical para todo el formulario
             formulario = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
             formulario.set_valign(Gtk.Align.CENTER)
             formulario.set_halign(Gtk.Align.CENTER)
 
-            # Campo: Nombre de usuario
             box_nombre = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
             box_nombre.pack_start(lbl_nombre, False, False, 0)
             box_nombre.pack_start(self.txtNombre, False, False, 0)
 
-            # Campo: Contraseña
             box_contraseña = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
             box_contraseña.pack_start(lbl_contraseña, False, False, 0)
             box_contraseña.pack_start(self.txtContraseña, False, False, 0)
 
-            # Campo: Email
             box_email = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
             box_email.pack_start(lbl_email, False, False, 0)
             box_email.pack_start(self.txtEmail, False, False, 0)
 
-            # Añadir todo al formulario
             formulario.pack_start(box_nombre, False, False, 0)
             formulario.pack_start(box_contraseña, False, False, 0)
             formulario.pack_start(box_email, False, False, 0)
             formulario.pack_start(btn_aceptar, False, False, 10)
             formulario.pack_start(lbl_volver, False, False, 5)
 
-            # Agregar al cuadro derecho
             cuadro_derecho.pack_start(formulario, True, True, 10)
 
-            # Empaquetar en el contenedor principal
             contenedor_principal.pack_start(cuadro_izquierdo, False, False, 0)
             contenedor_principal.pack_start(cuadro_derecho, True, True, 0)
 
@@ -612,8 +657,8 @@ class FiestraPrincipal(Gtk.Window):
 
     def volver_al_login(self, widget, uri):
         if uri == "volver_login":
-            widget.get_toplevel().destroy()  # Cierra la ventana de registro
-            self.ventana_login.show_all()  # Muestra la ventana de login de nuevo
+            widget.get_toplevel().destroy()
+            self.ventana_login.show_all()
             return True
         return False
 
