@@ -31,7 +31,7 @@ class FiestraPrincipal(Gtk.Window):
         color1 = Gdk.RGBA()
         color1.parse('#FFFFFF')
         cuadro1.override_background_color(Gtk.StateFlags.NORMAL, color1)
-        imagen1 = Gtk.Image.new_from_file("/home/daniel/PycharmProjects/Proyecto_DI/Imagenes/Logo.png")
+        imagen1 = Gtk.Image.new_from_file("/home/dam/PycharmProjects/Peluqueria/Imagenes/Logo.png")
 
         texto = "<a href='http://www.ejemplo.com'>Nuestra página</a>"
         lblEnlace = Gtk.Label(label=texto)
@@ -170,7 +170,7 @@ class FiestraPrincipal(Gtk.Window):
         # Encabezado
         header_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         header_box.override_background_color(Gtk.StateFlags.NORMAL, color_azul)
-        imagen1 = Gtk.Image.new_from_file("/home/daniel/PycharmProjects/Proyecto_DI/Imagenes/logoBase.png")
+        imagen1 = Gtk.Image.new_from_file("/home/dam/PycharmProjects/Peluqueria/Imagenes/logoBase.png")
         imagen1.set_halign(Gtk.Align.CENTER)
         header_box.pack_start(imagen1, True, True, 0)
         vbox.pack_start(header_box, False, False, 0)
@@ -241,23 +241,40 @@ class FiestraPrincipal(Gtk.Window):
         botonBorrar = Gtk.Button(label="Borrar")
         botonEditar = Gtk.Button(label="Editar")
         botonRecargar = Gtk.Button(label="Recargar")
+        boton_factura = Gtk.Button(label="Crear Factura PDF")
+
 
         botones_box.pack_start(botonAgregar, False, False, 0)
         botones_box.pack_start(botonBorrar, False, False, 0)
         botones_box.pack_start(botonEditar, False, False, 0)
         botones_box.pack_start(botonRecargar, False, False, 0)
+        botones_box.pack_start(boton_factura, False, False, 0)
 
         botonAgregar.connect("clicked", self.on_btnAgregar_clicked)
         botonBorrar.connect("clicked", self.on_btnBorrar_clicked)
         botonEditar.connect("clicked", self.on_btnEditar_clicked)
         botonRecargar.connect("clicked", self.on_btnAceptar_clicked, nueva_ventana)
-
-        boton_factura = Gtk.Button(label="Crear Factura PDF")
         boton_factura.connect("clicked", self.on_btnCrearFactura_clicked)
-        botones_box.pack_start(boton_factura, False, False, 0)
+
+        botones_confirmacion_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+
+        botonConfirmar = Gtk.Button(label="Confirmar")
+        botonCancelar = Gtk.Button(label="Cancelar")
+
+        botones_confirmacion_box.pack_start(botonConfirmar, False, False, 0)
+        botones_confirmacion_box.pack_start(botonCancelar, False, False, 0)
+
+        botonConfirmar.connect("clicked", self.on_btnConfirmar_clicked)
+        botonCancelar.connect("clicked", self.on_btnCancelar_clicked)
+
+        botones_box.pack_start(botones_confirmacion_box, False, False, 0)
+
+
+
 
         derecha_box.pack_start(formulario_box, True, True, 0)
         derecha_box.pack_start(botones_box, False, False, 0)
+
 
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         hbox.override_background_color(Gtk.StateFlags.NORMAL, color_azul)
@@ -314,7 +331,7 @@ class FiestraPrincipal(Gtk.Window):
                     fila[3] = 0
                 self.liststore.append(fila)
 
-    def on_btnAgregar_clicked(self, widget):
+    def realizar_agregado(self, widget):
         nombre = self.entries[0].get_text()
         apellidos = self.entries[1].get_text()
         hora_cita_str = self.entries[2].get_text()
@@ -351,28 +368,22 @@ class FiestraPrincipal(Gtk.Window):
 
         self.liststore.append([None, nombre, apellidos, hora_cita, servicios, total_gastado, id_peluquera])
 
-    def on_btnBorrar_clicked(self, boton):
+    def realizar_borrado(self, boton):
         seleccion = self.trvDetalleAlbara.get_selection()
         model, treeiter = seleccion.get_selected()
 
         if treeiter is not None:
             codigoProducto = model[treeiter][0]
-            dialog = Gtk.MessageDialog(self, Gtk.DialogFlags.MODAL, Gtk.MessageType.QUESTION, Gtk.ButtonsType.YES_NO, "¿Seguro que quieres borrar este producto?")
-            response = dialog.run()
+            model.remove(treeiter)
+            conBD = ConexionBD('Peluqueria.sqlite')
+            conBD.conectaBD()
+            conBD.creaCursor()
+            conBD.borraRexistro("DELETE FROM Clientes WHERE Id = ?", codigoProducto)
+            conBD.pechaBD()
 
-            if response == Gtk.ResponseType.YES:
-                model.remove(treeiter)  # Eliminar de la vista
-                conBD = ConexionBD('Peluqueria.sqlite')
-                conBD.conectaBD()
-                conBD.creaCursor()
-                conBD.borraRexistro("DELETE FROM Clientes WHERE Id = ?",
-                                     codigoProducto)
-                conBD.pechaBD()
-            dialog.destroy()
-        else:
-            print("No se ha seleccionado ningún detalle para borrar.")
 
-    def on_btnEditar_clicked(self, widget):
+
+    def realizar_edicion(self, widget):
         # Obtener la fila seleccionada
         seleccion = self.trvDetalleAlbara.get_selection()
         model, treeiter = seleccion.get_selected()
@@ -422,6 +433,50 @@ class FiestraPrincipal(Gtk.Window):
             model[treeiter][6] = id_peluquera
         else:
             print("No hay fila seleccionada para editar")
+
+    def on_btnAgregar_clicked(self, widget):
+        self.accion_actual = 'agregar'
+        print("Preparado para AGREGAR. Complete los campos y presione Confirmar.")
+
+    def on_btnEditar_clicked(self, widget):
+        seleccion = self.trvDetalleAlbara.get_selection()
+        model, treeiter = seleccion.get_selected()
+
+        if treeiter is not None:
+            self.operacion_actual = "editar"
+            self.fila_seleccionada = treeiter
+
+            valores = [str(model[treeiter][i]) for i in range(1, 7)]  # Del nombre al id_peluquera
+
+            for entry, valor in zip(self.entries, valores):
+                entry.set_text(valor)
+        else:
+            print("No hay fila seleccionada para editar.")
+
+    def on_btnBorrar_clicked(self, widget):
+        self.accion_actual = 'borrar'
+        print("Preparado para BORRAR. Seleccione una fila y presione Confirmar.")
+
+    def on_btnConfirmar_clicked(self, widget):
+        if self.accion_actual == 'agregar':
+            self.realizar_agregado(widget)
+        elif self.accion_actual == 'editar':
+            self.realizar_edicion(widget)
+        elif self.accion_actual == 'borrar':
+            self.realizar_borrado(widget)
+        else:
+            print("Ninguna operación preparada.")
+        self.accion_actual = None
+        self.limpiar_campos()
+
+    def on_btnCancelar_clicked(self, widget):
+        print("Operación cancelada.")
+        self.accion_actual = None
+        self.limpiar_campos()
+
+    def limpiar_campos(self):
+        for entry in self.entries:
+            entry.set_text("")
 
     def enlace_activado(self, widget, uri):
         print(f"Enlace activado: {uri}")
@@ -568,7 +623,7 @@ class FiestraPrincipal(Gtk.Window):
             color_izq.parse('#FFFFFF')
             cuadro_izquierdo.override_background_color(Gtk.StateFlags.NORMAL, color_izq)
 
-            imagen = Gtk.Image.new_from_file("/home/daniel/PycharmProjects/Proyecto_DI/Imagenes/Logo.png")
+            imagen = Gtk.Image.new_from_file("/home/dam/PycharmProjects/Peluqueria/Imagenes/Logo.png")
 
             texto = "<a href='http://www.ejemplo.com'>Nuestra página</a>"
             lbl_enlace = Gtk.Label(label=texto)
