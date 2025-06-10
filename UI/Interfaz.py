@@ -3,7 +3,6 @@ from datetime import datetime
 
 import gi
 
-import Metodos
 from Conexion.conexionDB import ConexionBD
 from fpdf import FPDF
 import datetime
@@ -129,7 +128,7 @@ class FiestraPrincipal(Gtk.Window):
 
             if resultado:
                 print("Inicio de sesión exitoso.")
-                self.on_btnAceptar_clicked(widget, self)  # Llama a tu función personalizada
+                self.on_btnAceptar_clicked(widget, self)
             else:
                 self.mostrar_dialogo_error_Login("Usuario o contraseña incorrectos.")
 
@@ -155,7 +154,7 @@ class FiestraPrincipal(Gtk.Window):
 
         # Crear nueva ventana
         nueva_ventana = Gtk.Window(title="Base de datos")
-        nueva_ventana.set_default_size(1050, 400)
+        nueva_ventana.set_default_size(950, 400)
         nueva_ventana.set_resizable(False)
 
         color_azul = Gdk.RGBA()
@@ -187,6 +186,8 @@ class FiestraPrincipal(Gtk.Window):
         self.trvDetalleAlbara = treeview
         titulos = ["ID", "Nombre", "Apellidos", "HoraCita", "Servicios", "Total_Gastado", "id_Peluquera"]
         for i, columna_titulo in enumerate(titulos):
+            if i == 0:
+                continue
             renderer = Gtk.CellRendererText()
             column = Gtk.TreeViewColumn(columna_titulo, renderer, text=i)
             treeview.append_column(column)
@@ -207,7 +208,7 @@ class FiestraPrincipal(Gtk.Window):
 
         formulario_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
         formulario_box.override_background_color(Gtk.StateFlags.NORMAL, color_azul)
-        derecha_box.set_valign(Gtk.Align.CENTER)  # <-- Aquí está la clave
+        derecha_box.set_valign(Gtk.Align.CENTER)
 
         derecha_box.pack_start(formulario_box, True, True, 0)
 
@@ -227,6 +228,8 @@ class FiestraPrincipal(Gtk.Window):
             entry = Gtk.Entry()
             entry.set_size_request(-1, 30)
             entry.set_valign(Gtk.Align.CENTER)
+            entry.set_editable(False)
+
 
             fila.pack_start(label, False, False, 5)
             fila.pack_start(entry, True, True, 5)
@@ -237,24 +240,21 @@ class FiestraPrincipal(Gtk.Window):
         botones_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         botones_box.override_background_color(Gtk.StateFlags.NORMAL, color_azul)
 
-        botonAgregar = Gtk.Button(label="Agregar")
-        botonBorrar = Gtk.Button(label="Borrar")
-        botonEditar = Gtk.Button(label="Editar")
-        botonRecargar = Gtk.Button(label="Recargar")
-        boton_factura = Gtk.Button(label="Crear Factura PDF")
+        self.botonAgregar = Gtk.Button(label="Agregar")
+        self.botonBorrar = Gtk.Button(label="Borrar")
+        self.botonEditar = Gtk.Button(label="Editar")
+        self.boton_factura = Gtk.Button(label="Crear Factura PDF")
 
 
-        botones_box.pack_start(botonAgregar, False, False, 0)
-        botones_box.pack_start(botonBorrar, False, False, 0)
-        botones_box.pack_start(botonEditar, False, False, 0)
-        botones_box.pack_start(botonRecargar, False, False, 0)
-        botones_box.pack_start(boton_factura, False, False, 0)
+        botones_box.pack_start(self.botonAgregar, False, False, 0)
+        botones_box.pack_start(self.botonBorrar, False, False, 0)
+        botones_box.pack_start(self.botonEditar, False, False, 0)
+        botones_box.pack_start(self.boton_factura, False, False, 0)
 
-        botonAgregar.connect("clicked", self.on_btnAgregar_clicked)
-        botonBorrar.connect("clicked", self.on_btnBorrar_clicked)
-        botonEditar.connect("clicked", self.on_btnEditar_clicked)
-        botonRecargar.connect("clicked", self.on_btnAceptar_clicked, nueva_ventana)
-        boton_factura.connect("clicked", self.on_btnCrearFactura_clicked)
+        self.botonAgregar.connect("clicked", self.on_btnAgregar_clicked)
+        self.botonBorrar.connect("clicked", self.on_btnBorrar_clicked)
+        self.botonEditar.connect("clicked", self.on_btnEditar_clicked)
+        self.boton_factura.connect("clicked", self.on_btnCrearFactura_clicked)
 
         botones_confirmacion_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
 
@@ -438,15 +438,32 @@ class FiestraPrincipal(Gtk.Window):
         self.accion_actual = 'agregar'
         print("Preparado para AGREGAR. Complete los campos y presione Confirmar.")
 
+        self.botonBorrar.set_sensitive(False)
+        self.botonEditar.set_sensitive(False)
+        self.boton_factura.set_sensitive(False)
+
+        for entry in self.entries:
+            entry.set_editable(True)
+
+        for entry in self.entries:
+            entry.set_text("")
+
     def on_btnEditar_clicked(self, widget):
         seleccion = self.trvDetalleAlbara.get_selection()
         model, treeiter = seleccion.get_selected()
 
+        for entry in self.entries:
+            entry.set_editable(True)
+
         if treeiter is not None:
-            self.operacion_actual = "editar"
+            self.accion_actual = "editar"
             self.fila_seleccionada = treeiter
 
-            valores = [str(model[treeiter][i]) for i in range(1, 7)]  # Del nombre al id_peluquera
+            self.botonBorrar.set_sensitive(False)
+            self.botonAgregar.set_sensitive(False)
+            self.boton_factura.set_sensitive(False)
+
+            valores = [str(model[treeiter][i]) for i in range(1, 7)]
 
             for entry, valor in zip(self.entries, valores):
                 entry.set_text(valor)
@@ -454,16 +471,57 @@ class FiestraPrincipal(Gtk.Window):
             print("No hay fila seleccionada para editar.")
 
     def on_btnBorrar_clicked(self, widget):
-        self.accion_actual = 'borrar'
-        print("Preparado para BORRAR. Seleccione una fila y presione Confirmar.")
+        seleccion = self.trvDetalleAlbara.get_selection()
+        model, treeiter = seleccion.get_selected()
+
+        self.botonAgregar.set_sensitive(False)
+        self.botonEditar.set_sensitive(False)
+        self.boton_factura.set_sensitive(False)
+
+        if treeiter is not None:
+            self.accion_actual = 'borrar'
+            self.fila_seleccionada = treeiter
+
+            valores = [str(model[treeiter][i]) for i in range(1, 7)]
+
+            for entry, valor in zip(self.entries, valores):
+                entry.set_text(valor)
+        else:
+            print("No hay fila seleccionada para borrar.")
+
+    def on_btnCrearFactura_clicked(self, widget):
+        seleccion = self.trvDetalleAlbara.get_selection()
+        model, treeiter = seleccion.get_selected()
+
+        self.botonAgregar.set_sensitive(False)
+        self.botonEditar.set_sensitive(False)
+        self.botonBorrar.set_sensitive(False)
+
+        if treeiter is not None:
+            self.accion_actual = 'factura'
+            self.fila_seleccionada = treeiter
+
+            valores = [str(model[treeiter][i]) for i in range(1, 7)]
+
+            for entry, valor in zip(self.entries, valores):
+                entry.set_text(valor)
+        else:
+            print("No hay fila seleccionada para borrar.")
 
     def on_btnConfirmar_clicked(self, widget):
+        self.botonAgregar.set_sensitive(True)
+        self.botonBorrar.set_sensitive(True)
+        self.botonEditar.set_sensitive(True)
+        self.boton_factura.set_sensitive(True)
+
         if self.accion_actual == 'agregar':
             self.realizar_agregado(widget)
         elif self.accion_actual == 'editar':
             self.realizar_edicion(widget)
         elif self.accion_actual == 'borrar':
             self.realizar_borrado(widget)
+        elif self.accion_actual == 'factura':
+            self.realizar_factura(widget)
         else:
             print("Ninguna operación preparada.")
         self.accion_actual = None
@@ -474,9 +532,17 @@ class FiestraPrincipal(Gtk.Window):
         self.accion_actual = None
         self.limpiar_campos()
 
+        self.botonAgregar.set_sensitive(True)
+        self.botonBorrar.set_sensitive(True)
+        self.botonEditar.set_sensitive(True)
+        self.boton_factura.set_sensitive(True)
+
+
+
     def limpiar_campos(self):
         for entry in self.entries:
             entry.set_text("")
+            entry.set_editable(False)
 
     def enlace_activado(self, widget, uri):
         print(f"Enlace activado: {uri}")
@@ -521,10 +587,7 @@ class FiestraPrincipal(Gtk.Window):
         pdf.output(nombre_archivo)
         print(f"Factura PDF creada: {nombre_archivo}")
 
-    def on_btnCrearFactura_clicked(self, widget):
-        import datetime
-        from fpdf import FPDF
-
+    def realizar_factura(self, widget):
         #Obtener cliente
         selection = self.trvDetalleAlbara.get_selection()
         model, treeiter = selection.get_selected()
@@ -533,7 +596,7 @@ class FiestraPrincipal(Gtk.Window):
             print("Ningún cliente seleccionado.")
             return
 
-        id_cliente = model[treeiter][0]  # Suponemos que la primera columna del TreeView es el ID
+        id_cliente = model[treeiter][0]
 
         conBD = ConexionBD('Peluqueria.sqlite')
         conBD.conectaBD()
